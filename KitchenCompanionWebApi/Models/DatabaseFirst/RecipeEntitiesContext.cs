@@ -31,6 +31,8 @@ public partial class RecipeEntitiesContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
+    public virtual DbSet<ShoppingList> ShoppingLists { get; set; }
+
     public virtual DbSet<Store> Stores { get; set; }
 
     public virtual DbSet<Unit> Units { get; set; }
@@ -40,11 +42,6 @@ public partial class RecipeEntitiesContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=CAMERON\\SQLEXPRESS02;Database=entities;Trusted_Connection=True;Encrypt=False;");
-  /*  protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=127.0.0.1,1433;Database=entities;User Id=sa;Password=;TrustServerCertificate=True;Encrypt=False;").EnableSensitiveDataLogging()
-        .EnableDetailedErrors()
-        .LogTo(Console.WriteLine, LogLevel.Information);**/
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,8 +72,26 @@ public partial class RecipeEntitiesContext : DbContext
             entity.HasKey(e => e.IngredientId).HasName("PK__Ingredie__C9029CABD54DE943");
 
             entity.Property(e => e.IngredientId).HasColumnName("Ingredient_ID");
+            entity.Property(e => e.CookTime)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(500)
+                .IsUnicode(false);
             entity.Property(e => e.IngredientName)
                 .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.Photo)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.Preptime)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.Serves)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.Stars)
+                .HasMaxLength(500)
                 .IsUnicode(false);
             entity.Property(e => e.StoreId).HasColumnName("Store_ID");
             entity.Property(e => e.UnitId).HasColumnName("Unit_ID");
@@ -184,6 +199,26 @@ public partial class RecipeEntitiesContext : DbContext
             entity.Property(e => e.Class)
                 .HasMaxLength(5)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<ShoppingList>(entity =>
+        {
+            entity.HasKey(e => e.ShoppingListId).HasName("PK__Shopping__0659AC3A41810E79");
+
+            entity.ToTable("ShoppingList");
+
+            entity.Property(e => e.ShoppingListId).HasColumnName("shopping_list_id");
+            entity.Property(e => e.Category)
+                .HasColumnType("text")
+                .HasColumnName("category");
+            entity.Property(e => e.Description)
+                .HasColumnType("text")
+                .HasColumnName("description");
+            entity.Property(e => e.IsDone).HasColumnName("is_done");
+            entity.Property(e => e.UserName)
+                .HasMaxLength(500)
+                .IsUnicode(false)
+                .HasColumnName("user_name");
         });
 
         modelBuilder.Entity<Store>(entity =>

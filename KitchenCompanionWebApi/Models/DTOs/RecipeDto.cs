@@ -4,7 +4,7 @@ namespace KitchenCompanionWebApi.Models.DTOs
 {
     public class RecipeDto
     {
-        public int RecipeId { get; set; }
+        public int? RecipeId { get; set; }
         [JsonPropertyName("recipeName")]
         public string RecipeName { get; set; }
         [JsonPropertyName("description")]
@@ -13,6 +13,12 @@ namespace KitchenCompanionWebApi.Models.DTOs
         public string ChefEmail { get; set; }
         public string Category { get; set; } 
         public string Favorite { get; set; }
+        public string? Photo { get; set; } 
+        public int? Stars { get; set; } 
+        public int? CookTime { get; set; } 
+        public int? Serves { get; set; } 
+
+        public int? Prep { get; set; } 
         public List<RecipeIngredientDto> Ingredients { get; set; } = new();
     }
 

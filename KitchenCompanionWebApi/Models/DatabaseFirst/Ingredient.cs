@@ -15,6 +15,18 @@ public partial class Ingredient
 
     public int StoreId { get; set; }
 
+    public string? Photo { get; set; }
+
+    public string? Stars { get; set; }
+
+    public string? Preptime { get; set; }
+
+    public string? CookTime { get; set; }
+
+    public string? Serves { get; set; }
+
+    public string? CreatedBy { get; set; }
+
     public virtual ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
 
     public virtual Store Store { get; set; } = null!;

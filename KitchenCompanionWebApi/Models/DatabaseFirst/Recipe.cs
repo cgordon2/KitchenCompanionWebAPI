@@ -19,6 +19,16 @@ public partial class Recipe
 
     public string? RecipeDescription { get; set; }
 
+    public string? Photo { get; set; }
+
+    public int? Stars { get; set; }
+
+    public int? Prep { get; set; }
+
+    public int? CookTime { get; set; }
+
+    public int? Serves { get; set; }
+
     public virtual Category Category { get; set; } = null!;
 
     public virtual User Chef { get; set; } = null!;

@@ -13,6 +13,79 @@ namespace KitchenCompanionWebApi.Services
             _recipeEntitiesContext = context;
         }
 
+        public async Task<List<ShoppingListDto>> GetShoppingList(string username)
+        {
+            var foundRecipes = await _recipeEntitiesContext.ShoppingLists
+                .Where(r => r.UserName == username)
+                .Select(r => new ShoppingListDto
+                { 
+                    IsDone = r.IsDone, 
+                    Category = r.Category, 
+                    Text = r.Description, 
+                    UserName = username
+                }) 
+                .ToListAsync();
+
+            return foundRecipes;
+        }
+
+        public async Task<ShoppingListDto> CreateShoppingListItem(string text, string category, string username)
+        {
+            var shoppingList = new ShoppingList();
+
+            shoppingList.IsDone = false;
+            shoppingList.Category = category;
+            shoppingList.Description = text;
+            shoppingList.UserName = username;
+            _recipeEntitiesContext.ShoppingLists.Add(shoppingList);
+            _recipeEntitiesContext.SaveChanges();
+
+            var dto = new ShoppingListDto();
+
+            dto.IsDone = shoppingList.IsDone;
+            dto.Category = category;
+            dto.Text = text;
+
+            dto.Id = shoppingList.ShoppingListId; 
+
+            return dto; 
+        }
+
+        public async Task<bool> DeleteShoppingList(int shoppingListId)
+        {
+            try
+            {
+                var listItem = await _recipeEntitiesContext.ShoppingLists.FirstOrDefaultAsync(r => r.ShoppingListId == shoppingListId);
+
+                _recipeEntitiesContext.ShoppingLists.Remove(listItem);
+                await _recipeEntitiesContext.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                return false; 
+            }
+
+            return true; 
+        }
+
+        public async Task<bool> MarkShoppingListComplete(int shoppingListId)
+        {
+            try
+            {
+                var listItem = await _recipeEntitiesContext.ShoppingLists.FirstOrDefaultAsync(r => r.ShoppingListId == shoppingListId);
+
+                listItem.IsDone = true;
+
+                await _recipeEntitiesContext.SaveChangesAsync(); 
+            }
+            catch (Exception ex)
+            {
+                return false; 
+            }
+
+            return true; 
+        }
+
         public async Task<List<RecipeDto>> SearchForRecipes(string searchQuery)
         {
             var foundRecipes = await _recipeEntitiesContext.Recipes
@@ -29,8 +102,6 @@ namespace KitchenCompanionWebApi.Services
 
             return foundRecipes; 
         }
-
-
 
         public async Task<bool> DeleteRecipe(int id)
         {
@@ -73,23 +144,48 @@ namespace KitchenCompanionWebApi.Services
 
         public async Task<RecipeDto> AddRecipe(RecipeDto dto)
         {
+            var recipeIngredients = dto.Ingredients; 
+
             var recipe = new Recipe
             {
                 RecipeName = dto.RecipeName, 
                 RecipeDescription = dto.Description, 
-                ChefId = 2,
+                ChefId = 1,
                 CategoryId = 1,
                 DishId = 1, 
+                Photo = dto.Photo, 
+                Stars = dto.Stars, 
+                CookTime = dto.CookTime,
+                Prep = dto.Prep, 
+                Serves = dto.Serves, 
                 Favorite = new Favorite()
                 {
                     Favorite1 = "Yes"
                 },
 
-                // Leave this empty:
+                // Leave this empty: IF the user did not select an ingredient
                 RecipeIngredients = new List<RecipeIngredient>()
             };
 
             _recipeEntitiesContext.Recipes.Add(recipe);
+            _recipeEntitiesContext.SaveChanges();
+
+            int recipeId = recipe.RecipeId;
+            var riIngredients = new List<RecipeIngredient>(); 
+
+            foreach (var item in recipeIngredients)
+            {
+                var riDB = new RecipeIngredient(); 
+
+                riDB.IngredientId = item.IngredientId;
+                riDB.RecipeId = recipeId;
+                riDB.Quantity = 1;
+                riDB.UnitId = 1;
+
+                riIngredients.Add(riDB);
+            }
+
+            recipe.RecipeIngredients = riIngredients;
             _recipeEntitiesContext.SaveChanges(); 
 
             return dto;
@@ -119,6 +215,12 @@ namespace KitchenCompanionWebApi.Services
                 UnitId = 1,     // Use ID of an existing Unit
                 StoreId = 1,
                 Quantity = 3,
+                Photo = dto.Photo, 
+                CreatedBy = dto.CreatedBy, 
+                Stars = dto.Stars, 
+                Preptime = dto.PrepTime, 
+                CookTime = dto.CookTime, 
+                Serves = dto.Serves
                // RecipeIngredients = new List<RecipeIngredient>()
             };
 
@@ -168,7 +270,12 @@ namespace KitchenCompanionWebApi.Services
                 IngredientName = ingredient.IngredientName,
                 UnitName = ingredient.Unit?.Unit1,       // assuming property name in Unit entity
                 StoreName = ingredient.Store?.StoreName, // assuming property name in Store entity
-                StoreUrl = ingredient.Store?.StoreUrl
+                StoreUrl = ingredient.Store?.StoreUrl, 
+                Stars = ingredient.Stars, 
+                Photo = ingredient.Photo, 
+                PrepTime = ingredient.Preptime, 
+                CookTime = ingredient.CookTime, 
+                CreatedBy = ingredient.CreatedBy
             };
         }
 
@@ -184,7 +291,14 @@ namespace KitchenCompanionWebApi.Services
                     IngredientName = ig.IngredientName,
                     UnitName = u.Unit1,
                     StoreName = so.StoreName,
-                    StoreUrl = so.StoreUrl
+                    StoreUrl = so.StoreUrl, 
+                    CreatedBy = ig.CreatedBy, 
+                    Stars = ig.Stars, 
+                    PrepTime = ig.Preptime, 
+                    Photo = ig.Photo, 
+                    IngredientGUID = Convert.ToString(ig.IngredientId), 
+                    CookTime = ig.CookTime, 
+                    Serves = ig.Serves
                 }
             ).ToListAsync();
 
@@ -197,7 +311,7 @@ namespace KitchenCompanionWebApi.Services
                 .Include(r => r.Chef)
                 .Include(r => r.Favorite)
                 .Include(r => r.Category)
-                .Include(r => r.RecipeIngredients)
+                .Include(r => r.RecipeIngredients)  
                     .ThenInclude(ri => ri.Ingredient)
                         .ThenInclude(i => i.Store)
                 .Include(r => r.RecipeIngredients)
@@ -239,7 +353,7 @@ namespace KitchenCompanionWebApi.Services
             var recipes = await _recipeEntitiesContext.Recipes
                                 .Include(r => r.Chef)
                                 .Include(r => r.Favorite)
-                                .Include(r => r.Category)
+                                .Include(r => r.Category) 
                                 .Include(r => r.RecipeIngredients)
                                     .ThenInclude(ri => ri.Ingredient)
                                         .ThenInclude(i => i.Store)
@@ -252,6 +366,11 @@ namespace KitchenCompanionWebApi.Services
                                     RecipeId = r.RecipeId,
                                     RecipeName = r.RecipeName,
                                     Description = r.RecipeDescription,
+                                    Stars = r.Stars,
+                                    Photo = r.Photo,
+                                    Prep = r.Prep,
+                                    CookTime = r.CookTime,
+                                    Serves = r.Serves,
                                     ChefName = r.Chef.UserName,
                                     ChefEmail = r.Chef.Email,
                                     Category = r.Category.Category1,
@@ -280,7 +399,7 @@ namespace KitchenCompanionWebApi.Services
             var recipes = await _recipeEntitiesContext.Recipes
                 .Include(r => r.Chef) 
                 .Include(r => r.Favorite) 
-                .Include(r => r.Category)
+                .Include(r => r.Category) 
                 .Include(r => r.RecipeIngredients)
                     .ThenInclude(ri => ri.Ingredient)
                         .ThenInclude(i => i.Store)
@@ -295,6 +414,11 @@ namespace KitchenCompanionWebApi.Services
                     ChefEmail = r.Chef.Email,
                     Category = r.Category.Category1, 
                     Favorite = r.Favorite.Favorite1,
+                    Stars = r.Stars, 
+                    Photo = r.Photo, 
+                    Prep = r.Prep, 
+                    CookTime = r.CookTime,
+                    Serves = r.Serves,
                     Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
                     {
                         RecipeId = ri.RecipeId,

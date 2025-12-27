@@ -6,6 +6,25 @@
 # dotenv files
 .env
 
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vsidx
+*.codechunks
+
+# Build output
+bin/
+obj/
+
+# Rider
+.idea/
+
+# macOS
+.DS_Store
+
 # User-specific files
 *.rsuser
 *.suo

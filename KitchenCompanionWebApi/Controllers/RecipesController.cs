@@ -16,6 +16,38 @@ namespace KitchenCompanionWebApi.Controllers
             return new OkObjectResult(foundRecipes); 
         }
 
+        [HttpGet("ShoppingList")]
+        public async Task<ActionResult<List<ShoppingListDto>>> GetShoppingList(string username)
+        {
+            var shoppingList = await recipeService.GetShoppingList(username); 
+
+            return new OkObjectResult(shoppingList); 
+        }
+
+        [HttpPost("DeleteShoppingListItem")]
+        public async Task<ActionResult<bool>> DeleteShoppingItem(ShoppingListDto dto)
+        {
+            await recipeService.DeleteShoppingList(dto.Id); 
+            return true; 
+        }
+
+        [HttpPost("MarkShoppingComplete")]
+        public async Task<ActionResult<bool>> MarkShoppingListItemComplete(ShoppingListDto dto)
+        {
+            await recipeService.MarkShoppingListComplete(dto.Id);
+
+            return true; 
+        }
+
+
+        [HttpPost("CreateShoppingListItem")]
+        public async Task<ActionResult<ShoppingListDto>> CreateShoppingListItem(ShoppingListDto dto)
+        {
+            var test = await recipeService.CreateShoppingListItem(dto.Text, dto.Category, dto.UserName);
+
+            return new OkObjectResult(test); 
+        }
+
 
         [HttpGet("IngredientId")]
         public async Task<ActionResult<IngredientDto>> GetIngredientById(int id)
@@ -80,8 +112,13 @@ namespace KitchenCompanionWebApi.Controllers
         }
 
         [HttpPost("AddRecipe")]
-        public async Task<bool> AddRecipe(RecipeDto dto)
+        public async Task<ActionResult<bool>> AddRecipe(RecipeDto dto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             await recipeService.AddRecipe(dto); 
 
             return await Task.FromResult(false); 

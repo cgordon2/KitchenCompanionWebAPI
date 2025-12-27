@@ -18,5 +18,10 @@ namespace KitchenCompanionWebApi.Services
         Task<bool> DeleteIngredient(int ingredientId);
         Task<IngredientDto> AddIngredient(IngredientDto ingredient);
         Task<List<RecipeDto>> SearchForRecipes(string searchQuery);
+
+        Task<List<ShoppingListDto>> GetShoppingList(string username);
+        Task<bool> DeleteShoppingList(int shoppingListId);
+        Task<bool> MarkShoppingListComplete(int shoppingListId);
+        Task<ShoppingListDto> CreateShoppingListItem(string text, string category, string username); 
     }
 }
