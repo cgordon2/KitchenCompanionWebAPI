@@ -93,7 +93,7 @@ namespace KitchenCompanionWebApi.Services
             {
                 var favorite = new Favorite
                 {
-                    Favorite1 = "Yes"  
+                    Favorite1 = "No"  
                 };
                 context.Favorites.Add(favorite);
                 await context.SaveChangesAsync();  
@@ -112,6 +112,7 @@ namespace KitchenCompanionWebApi.Services
                 context.MealTypes.Add(mealType);
                 await context.SaveChangesAsync();  
 
+                // hidden not pulled from db
                 var category = new Category
                 {
                     Category1 = "User2"
@@ -128,6 +129,7 @@ namespace KitchenCompanionWebApi.Services
                     Chef = user,
                     RecipeName = "Example User2",
                     RecipeDescription = "Test",
+                    IsSetupRecipe = true, 
                     RecipeIngredients = new List<RecipeIngredient>
                 { 
                 }

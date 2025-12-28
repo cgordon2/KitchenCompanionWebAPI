@@ -111,6 +111,22 @@ namespace KitchenCompanionWebApi.Controllers
             return new OkObjectResult(recipe); 
         }
 
+        [HttpGet("ListClones")]
+        public async Task<ActionResult<List<RecipeDto>>> GetClonedRecipes()
+        {
+            var cloned = await recipeService.GetClonedRecipes(); 
+
+            return new OkObjectResult(cloned); 
+        }
+
+        [HttpPost("EditRecipe")]
+        public async Task<ActionResult<bool>> EditRecipe(RecipeDto dto)
+        {
+            await recipeService.EditRecipe(dto);
+
+            return new OkObjectResult(true); 
+        }
+
         [HttpPost("AddRecipe")]
         public async Task<ActionResult<bool>> AddRecipe(RecipeDto dto)
         {

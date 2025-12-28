@@ -141,6 +141,9 @@ public partial class RecipeEntitiesContext : DbContext
             entity.Property(e => e.ChefId).HasColumnName("Chef_ID");
             entity.Property(e => e.DishId).HasColumnName("Dish_ID");
             entity.Property(e => e.FavoriteId).HasColumnName("Favorite_ID");
+            entity.Property(e => e.IsClone).HasColumnName("Is_Clone");
+            entity.Property(e => e.IsDeleted).HasColumnName("Is_deleted");
+            entity.Property(e => e.IsSetupRecipe).HasColumnName("is_setup_recipe");
             entity.Property(e => e.RecipeDescription)
                 .HasMaxLength(100)
                 .IsUnicode(false);

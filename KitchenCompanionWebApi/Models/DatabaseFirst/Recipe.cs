@@ -29,6 +29,12 @@ public partial class Recipe
 
     public int? Serves { get; set; }
 
+    public bool IsClone { get; set; }
+
+    public bool IsDeleted { get; set; }
+
+    public bool IsSetupRecipe { get; set; }
+
     public virtual Category Category { get; set; } = null!;
 
     public virtual User Chef { get; set; } = null!;

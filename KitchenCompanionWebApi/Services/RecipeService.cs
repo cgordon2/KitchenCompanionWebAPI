@@ -13,6 +13,7 @@ namespace KitchenCompanionWebApi.Services
             _recipeEntitiesContext = context;
         }
 
+
         public async Task<List<ShoppingListDto>> GetShoppingList(string username)
         {
             var foundRecipes = await _recipeEntitiesContext.ShoppingLists
@@ -123,7 +124,7 @@ namespace KitchenCompanionWebApi.Services
 
         public async Task<RecipeDto> EditRecipe(RecipeDto dto)
         {
-            var recipe = await _recipeEntitiesContext.Recipes
+            var recipe = await _recipeEntitiesContext.Recipes.Include(r => r.RecipeIngredients)
                  .FirstOrDefaultAsync(r => r.RecipeId == dto.RecipeId);
 
             if (recipe == null)
@@ -131,6 +132,21 @@ namespace KitchenCompanionWebApi.Services
 
             recipe.RecipeName = dto.RecipeName;
             recipe.RecipeDescription = dto.Description;
+            recipe.CategoryId = Convert.ToInt32(dto.Category); 
+
+            _recipeEntitiesContext.RecipeIngredients.RemoveRange(
+                recipe.RecipeIngredients
+            );
+             
+            recipe.RecipeIngredients = dto.Ingredients
+                .Select(i => new RecipeIngredient
+                {
+                    IngredientId = i.IngredientId,
+                    Quantity = i.Quantity, 
+                    UnitId = i.UnitId, 
+                    RecipeId = recipe.RecipeId
+                })
+                .ToList(); 
 
             await _recipeEntitiesContext.SaveChangesAsync();
 
@@ -144,23 +160,29 @@ namespace KitchenCompanionWebApi.Services
 
         public async Task<RecipeDto> AddRecipe(RecipeDto dto)
         {
-            var recipeIngredients = dto.Ingredients; 
+            var recipeIngredients = dto.Ingredients;
+
+            var user = await _recipeEntitiesContext.Users.FirstOrDefaultAsync(r => r.UserName == dto.ChefName); 
+
+            var isCloned = dto.IsClone; 
 
             var recipe = new Recipe
             {
                 RecipeName = dto.RecipeName, 
                 RecipeDescription = dto.Description, 
-                ChefId = 1,
-                CategoryId = 1,
+                ChefId = user.ChefId,
+                CategoryId = Convert.ToInt32(dto.Category),
                 DishId = 1, 
                 Photo = dto.Photo, 
                 Stars = dto.Stars, 
                 CookTime = dto.CookTime,
                 Prep = dto.Prep, 
-                Serves = dto.Serves, 
+                Serves = dto.Serves,
+                IsClone = isCloned, 
+                IsDeleted = false, 
                 Favorite = new Favorite()
                 {
-                    Favorite1 = "Yes"
+                    Favorite1 = "No"
                 },
 
                 // Leave this empty: IF the user did not select an ingredient
@@ -393,14 +415,64 @@ namespace KitchenCompanionWebApi.Services
             return recipes; 
         }
 
+        public async Task<List<RecipeDto>> GetClonedRecipes()
+        {
+            var recipes = await _recipeEntitiesContext.Recipes
+    .Where(r => !r.IsDeleted)
+    .Where(r => r.IsClone)
+    .Where(r => !r.IsSetupRecipe)
+    .Include(r => r.Chef)
+    .Include(r => r.Favorite)
+    .Include(r => r.Category)
+    .Include(r => r.RecipeIngredients)
+        .ThenInclude(ri => ri.Ingredient)
+            .ThenInclude(i => i.Store)
+    .Include(r => r.RecipeIngredients)
+        .ThenInclude(ri => ri.Unit)
+    .Select(r => new RecipeDto
+    {
+        RecipeId = r.RecipeId,
+        RecipeName = r.RecipeName,
+        Description = r.RecipeDescription,
+        ChefName = r.Chef.UserName,
+        ChefEmail = r.Chef.Email,
+        Category = r.Category.Category1,
+        Favorite = r.Favorite.Favorite1,
+        Stars = r.Stars,
+        Photo = r.Photo,
+        Prep = r.Prep,
+        CookTime = r.CookTime,
+        Serves = r.Serves,
+        IsClone = r.IsClone,
+        Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
+        {
+            RecipeId = ri.RecipeId,
+            IngredientId = ri.IngredientId,
+            Quantity = ri.Quantity,
+            UnitId = ri.UnitId,
+            IngredientName = ri.Ingredient.IngredientName,
+            StoreName = ri.Ingredient.Store.StoreName,
+            StoreUrl = ri.Ingredient.Store.StoreUrl,
+            UnitName = ri.Unit != null ? ri.Unit.Unit1 : null
+        }).ToList()
+    })
+    .OrderBy(r => r.RecipeId)
+    .ToListAsync();
+
+            return recipes;
+        }
+
         /** Fetch batch then process on device ***/
         public async Task<List<RecipeDto>> GetRecipes()
         {
             var recipes = await _recipeEntitiesContext.Recipes
+                .Where(r => !r.IsDeleted)
+                .Where(r => !r.IsClone)
+                .Where(r => !r.IsSetupRecipe)
                 .Include(r => r.Chef) 
                 .Include(r => r.Favorite) 
-                .Include(r => r.Category) 
-                .Include(r => r.RecipeIngredients)
+                .Include(r => r.Category)  
+                .Include(r => r.RecipeIngredients) 
                     .ThenInclude(ri => ri.Ingredient)
                         .ThenInclude(i => i.Store)
                 .Include(r => r.RecipeIngredients)
@@ -419,6 +491,7 @@ namespace KitchenCompanionWebApi.Services
                     Prep = r.Prep, 
                     CookTime = r.CookTime,
                     Serves = r.Serves,
+                    IsClone = r.IsClone,
                     Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
                     {
                         RecipeId = ri.RecipeId,
@@ -430,7 +503,7 @@ namespace KitchenCompanionWebApi.Services
                         StoreUrl = ri.Ingredient.Store.StoreUrl,
                         UnitName = ri.Unit != null ? ri.Unit.Unit1 : null
                     }).ToList()
-                })
+                }) 
                 .OrderBy(r => r.RecipeId)
                 .ToListAsync();
 

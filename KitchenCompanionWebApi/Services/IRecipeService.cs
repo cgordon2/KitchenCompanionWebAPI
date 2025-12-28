@@ -12,8 +12,8 @@ namespace KitchenCompanionWebApi.Services
         Task<List<IngredientDto>> GetAllIngredients();
         Task<bool> DeleteRecipe(int recipeId);
         Task<RecipeDto> EditRecipe(RecipeDto recipe);
-        Task<RecipeDto> AddRecipe(RecipeDto recipe); 
-
+        Task<RecipeDto> AddRecipe(RecipeDto recipe);
+        Task<List<RecipeDto>> GetClonedRecipes(); 
         Task<IngredientDto> GetIngredientById(int ingredientId);
         Task<bool> DeleteIngredient(int ingredientId);
         Task<IngredientDto> AddIngredient(IngredientDto ingredient);
