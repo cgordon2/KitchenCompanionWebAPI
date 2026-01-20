@@ -3,6 +3,7 @@ using KitchenCompanionWebApi.Models.DatabaseFirst;
 using KitchenCompanionWebApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System;
@@ -57,6 +58,8 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 //app.Urls.Add("http://0.0.0.0:5285");
 
+
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -66,7 +69,12 @@ app.MapOpenApi();
 app.MapScalarApiReference();
 
 app.UseHttpsRedirection();
-
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        @"C:\Users\gordo\OneDrive\Desktop\GH_Final_WebAPI\KitchenCompanionWebAPI\KitchenCompanionWebApi\UploadedImages"),
+    RequestPath = "/uploads"
+});
 app.UseAuthorization();
 
 app.MapControllers();

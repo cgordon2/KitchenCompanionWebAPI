@@ -1,4 +1,5 @@
-﻿using KitchenCompanionWebApi.Models.DTOs;
+﻿using KitchenCompanionWebApi.Models.DatabaseFirst;
+using KitchenCompanionWebApi.Models.DTOs;
 using KitchenCompanionWebApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,11 +10,11 @@ namespace KitchenCompanionWebApi.Controllers
     public class RecipesController(IRecipeService recipeService): ControllerBase
     {
         [HttpPost("Search")]
-        public async Task<ActionResult<List<RecipeDto>>> SearchRecipes(string recipe)
+        public async Task<ActionResult<List<RecipeDto>>> SearchRecipes(RecipeSearchDto search)
         {
-            var foundRecipes = await recipeService.SearchForRecipes(recipe);
+            var foundRecipes = await recipeService.SearchRecipesAsync(search);
 
-            return new OkObjectResult(foundRecipes); 
+            return foundRecipes; 
         }
 
         [HttpGet("ShoppingList")]
@@ -22,6 +23,27 @@ namespace KitchenCompanionWebApi.Controllers
             var shoppingList = await recipeService.GetShoppingList(username); 
 
             return new OkObjectResult(shoppingList); 
+        }
+
+        public class FavoriteRequest
+        {
+            public int RecipeId { get; set; }
+        }
+
+        [HttpPost("FavRecipe")]
+        public async Task<ActionResult<bool>> FavRecipe(FavoriteRequest dto)
+        {
+            await recipeService.FavoriteRecipe(dto.RecipeId);
+
+            return new OkObjectResult(dto); 
+        }
+
+        [HttpPost("UnfavRecipe")]
+        public async Task<ActionResult<bool>> UnfavRecipe(FavoriteRequest recipeId)
+        {
+            await recipeService.UnfavoriteRecipe(recipeId.RecipeId);
+
+            return new OkObjectResult(false);
         }
 
         [HttpPost("DeleteShoppingListItem")]
@@ -69,6 +91,14 @@ namespace KitchenCompanionWebApi.Controllers
         public async Task<ActionResult<List<RecipeDto>>> GetFavoriteRecipes()
         {
             var recipes = await recipeService.GetFavoriteRecipes();
+
+            return recipes; 
+        }
+
+        [HttpGet("ListByUserId")]
+        public async Task<ActionResult<List<RecipeDto>>> GetRecipesById(int page, int userId)
+        {
+            var recipes = await recipeService.GetRecipesByUserId(page, 3, userId);
 
             return recipes; 
         }
@@ -125,6 +155,34 @@ namespace KitchenCompanionWebApi.Controllers
             await recipeService.EditRecipe(dto);
 
             return new OkObjectResult(true); 
+        }
+
+        [HttpPost("UploadImage")]
+        public async Task<ActionResult> UploadImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded");
+
+            var uploadsFolder = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "UploadedImages");
+
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var filePath = Path.Combine(uploadsFolder, file.FileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return Ok(new
+            {
+                file.FileName,
+                file.Length,
+                SavedTo = filePath
+            });
         }
 
         [HttpPost("AddRecipe")]

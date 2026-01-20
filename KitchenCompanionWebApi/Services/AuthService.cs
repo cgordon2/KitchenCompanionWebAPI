@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using KitchenCompanionWebApi.Models.DTOs;
 
 namespace KitchenCompanionWebApi.Services
 {
@@ -27,6 +28,86 @@ namespace KitchenCompanionWebApi.Services
             }
 
             return CreateToken(user); 
+        }
+
+        public async Task<List<UserFollowerDto>> GetFollowers(int currentUserId)
+        {
+            return await context.Followers
+                        .Where(f => f.UserId == currentUserId)
+                        .Join(
+                            context.Users,
+                            f => f.FollowerId,
+                            u => u.ChefId,
+                            (f, u) => new UserFollowerDto
+                            {
+                                ChefId = u.ChefId,
+                                UserName = u.UserName,
+                                AvatarUrl = u.AvatarUrl,
+                                ShortBio = u.ShortBio,
+                                Location = u.Location,
+                                FollowersCount = u.FollowersCount,
+                                FollowingCount = u.FollowingCount
+                            })
+        .ToListAsync();
+        }
+
+        public async Task<List<UserFollowerDto>> GetFollowing(int currentUserId)
+        {
+            return await context.Followers
+                .Where(f => f.FollowerId == currentUserId)
+                .Join(
+                    context.Users,
+                    f => f.UserId,
+                    u => u.ChefId,
+                    (f, u) => new UserFollowerDto
+                    {
+                        ChefId = u.ChefId,
+                        UserName = u.UserName,
+                        AvatarUrl = u.AvatarUrl,
+                        ShortBio = u.ShortBio,
+                        Location = u.Location,
+                        FollowersCount = u.FollowersCount,
+                        FollowingCount = u.FollowingCount
+                    })
+                .ToListAsync();
+        }
+
+        public async Task<string?> DeleteFollower(FollowerDto dto)
+        {
+            var follower = await context.Followers
+        .FirstOrDefaultAsync(f =>
+            f.UserId == dto.UserId &&
+            f.FollowerId == dto.FollowerId);
+
+            if (follower == null)
+                return "Not following";
+
+            context.Followers.Remove(follower);
+            await context.SaveChangesAsync();
+
+
+            return string.Empty; 
+        }
+
+        public async Task<string?> InsertFollower(FollowerDto dto)
+        {
+            var follower = new Follower(); 
+            follower.UserId = dto.UserId;
+            follower.FollowerId = dto.FollowerId;
+
+            context.Followers.Add(follower);
+            await context.SaveChangesAsync(); 
+            
+            return string.Empty; 
+        }
+
+        public async Task<List<User>> GetUsers(int page, int pageSize)
+        {
+            return await context.Users
+                .Where(u => u.IsSetup)        // REQUIRED for paging
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(); 
         }
 
         public async Task<User?> GetUser(string user)

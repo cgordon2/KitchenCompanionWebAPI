@@ -19,6 +19,8 @@ public partial class RecipeEntitiesContext : DbContext
 
     public virtual DbSet<Favorite> Favorites { get; set; }
 
+    public virtual DbSet<Follower> Followers { get; set; }
+
     public virtual DbSet<Ingredient> Ingredients { get; set; }
 
     public virtual DbSet<MealType> MealTypes { get; set; }
@@ -65,6 +67,14 @@ public partial class RecipeEntitiesContext : DbContext
                 .HasMaxLength(5)
                 .IsUnicode(false)
                 .HasColumnName("Favorite");
+        });
+
+        modelBuilder.Entity<Follower>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Follower__3214EC07F9E2FCA7");
+
+            entity.Property(e => e.FollowerId).HasColumnName("Follower_Id");
+            entity.Property(e => e.UserId).HasColumnName("User_Id");
         });
 
         modelBuilder.Entity<Ingredient>(entity =>

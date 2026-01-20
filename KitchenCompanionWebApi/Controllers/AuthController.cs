@@ -1,5 +1,6 @@
 ﻿using KitchenCompanionWebApi.Models;
-using KitchenCompanionWebApi.Models.DatabaseFirst; 
+using KitchenCompanionWebApi.Models.DatabaseFirst;
+using KitchenCompanionWebApi.Models.DTOs;
 using KitchenCompanionWebApi.Services;
 using Microsoft.AspNetCore.Authorization; 
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,39 @@ namespace KitchenCompanionWebApi.Controllers
             
            return Ok(user);
         }
+
+        [HttpGet("ListUsers")]
+        public async Task<ActionResult<List<User>>> GetUsers(string page)
+        {
+            var users = await authService.GetUsers(Convert.ToInt32(page), 20); 
+            return new OkObjectResult(users); 
+        }
+
+        [HttpGet("ListFollowing")]
+        public async Task<ActionResult<List<UserFollowerDto>>> GetFollowing(int currentUserId)
+        {
+            var following = await authService.GetFollowing(currentUserId);
+
+            return following; 
+        }
+
+
+        [HttpGet("ListFollowers")]
+        public async Task<ActionResult<List<UserFollowerDto>>> GetFollowers(int currentUserId)
+        {
+            var followers = await authService.GetFollowers(currentUserId);
+
+            return followers; 
+        }
+
+        [HttpPost("AddFollower")]
+        public async Task<ActionResult<string>> InsertFollower(FollowerDto request)
+        {
+            await authService.InsertFollower(request);
+
+            return "Success"; 
+        }
+
 
         [HttpGet("GetUser")]
         public async Task<ActionResult<User>> GetUser([FromQuery] string userName)

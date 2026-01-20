@@ -13,6 +13,88 @@ namespace KitchenCompanionWebApi.Services
             _recipeEntitiesContext = context;
         }
 
+        public async Task<List<RecipeDto>> SearchRecipesAsync(RecipeSearchDto search)
+        {
+            IQueryable<Recipe> query = _recipeEntitiesContext.Recipes;
+
+            // ALL of these words (AND)
+            if (!string.IsNullOrWhiteSpace(search.AllWords))
+            {
+                var words = search.AllWords
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var word in words)
+                {
+                    query = query.Include(r => r.Category).Include(r => r.Favorite).Include(r => r.RecipeIngredients).Include(r => r.Chef).Where(r =>
+                        r.RecipeName.Contains(word) ||
+                        r.RecipeDescription.Contains(word));
+                }
+            }
+
+            // EXACT phrase
+            if (!string.IsNullOrWhiteSpace(search.ExactPhrase))
+            {
+                query = query.Include(r => r.Category).Include(r => r.Favorite).Include(r => r.RecipeIngredients).Include(r => r.Chef).Where(r =>
+                    r.RecipeName.Contains(search.ExactPhrase) ||
+                    r.RecipeDescription.Contains(search.ExactPhrase));
+            }
+
+            // NONE of these words (NOT)
+            if (!string.IsNullOrWhiteSpace(search.NoneWords))
+            {
+                var excluded = search.NoneWords
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                query = query.Include(r => r.RecipeIngredients).Include(r => r.Favorite).Include(r => r.Category).Include(r => r.Chef).Where(r =>
+    !r.RecipeName.Contains(search.NoneWords) &&
+    !r.RecipeDescription.Contains(search.NoneWords)); 
+                /*foreach (var word in excluded)
+                {
+                    query = query.Include(r => r.RecipeIngredients).Where(r =>
+                        !r.RecipeName.Contains(word) &&
+                        !r.RecipeDescription.Contains(word));
+                }**/
+            }
+
+            if (search.SearchOnlyUser)
+            {
+                query = query.Include(r => r.RecipeIngredients).Include(r => r.Favorite).Include(r => r.Chef).Include(r => r.Category).Where(r => r.ChefId == search.loggedInUserGuid); 
+            }
+            return await query
+                .Select(r => new RecipeDto
+                {
+                    RecipeId = r.RecipeId,
+                    RecipeName = r.RecipeName,
+                    Description = r.RecipeDescription,
+                    ChefName = r.Chef.UserName, 
+                    Photo = r.Photo, 
+                    ChefEmail = r.Chef.Email, 
+                    Stars = r.Stars, 
+                    CookTime = r.CookTime, 
+                    Prep = r.Prep, 
+                    Serves = r.Serves,
+                    Category = r.Category.Category1,
+                    IsClone = r.IsClone, 
+                    Favorite = r.Favorite.Favorite1,
+                    Ingredients = r.RecipeIngredients
+                        .Select(ri => new RecipeIngredientDto
+                        {
+                            RecipeId = r.RecipeId,
+                            IngredientId = ri.IngredientId,
+                            Quantity = ri.Quantity,
+                            UnitId = ri.UnitId,
+
+                            IngredientName = ri.Ingredient.IngredientName,
+                            StoreName = ri.Ingredient.Store.StoreName,
+                            StoreUrl = ri.Ingredient.Store.StoreUrl
+                        })
+                        .ToList()
+                })
+                .ToListAsync();
+
+            ;
+        }
+
 
         public async Task<List<ShoppingListDto>> GetShoppingList(string username)
         {
@@ -104,6 +186,30 @@ namespace KitchenCompanionWebApi.Services
             return foundRecipes; 
         }
 
+        public async Task<bool> FavoriteRecipe(int recipeId)
+        {
+            var recipe = await _recipeEntitiesContext.Recipes.Include(r => r.Favorite)
+            .FirstOrDefaultAsync(r => r.RecipeId == recipeId);
+
+            recipe.Favorite.Favorite1 = "Yes";
+
+            await _recipeEntitiesContext.SaveChangesAsync(); 
+
+            return true; 
+        }
+
+        public async Task<bool> UnfavoriteRecipe(int recipeId)
+        {
+            var recipe = await _recipeEntitiesContext.Recipes.Include(r => r.Favorite)
+             .FirstOrDefaultAsync(r => r.RecipeId == recipeId);
+
+            recipe.Favorite.Favorite1 = "No"; 
+
+            await _recipeEntitiesContext.SaveChangesAsync();
+
+            return true;
+        }
+
         public async Task<bool> DeleteRecipe(int id)
         {
             var recipe = await _recipeEntitiesContext.Recipes
@@ -162,7 +268,9 @@ namespace KitchenCompanionWebApi.Services
         {
             var recipeIngredients = dto.Ingredients;
 
-            var user = await _recipeEntitiesContext.Users.FirstOrDefaultAsync(r => r.UserName == dto.ChefName); 
+            var user = await _recipeEntitiesContext.Users.FirstOrDefaultAsync(r => r.UserName == dto.ChefName);
+
+            dto.Photo = "food.jpg"; 
 
             var isCloned = dto.IsClone; 
 
@@ -235,7 +343,7 @@ namespace KitchenCompanionWebApi.Services
             {
                 IngredientName = dto.IngredientName, 
                 UnitId = 1,     // Use ID of an existing Unit
-                StoreId = 1,
+                StoreId = Convert.ToInt32(dto.StoreName),
                 Quantity = 3,
                 Photo = dto.Photo, 
                 CreatedBy = dto.CreatedBy, 
@@ -458,6 +566,58 @@ namespace KitchenCompanionWebApi.Services
     })
     .OrderBy(r => r.RecipeId)
     .ToListAsync();
+
+            return recipes;
+        }
+
+        public async Task<List<RecipeDto>> GetRecipesByUserId(int page, int pageSize, int userId)
+        {
+            int skip = (page - 1) * pageSize;
+
+            var recipes = await _recipeEntitiesContext.Recipes
+                .Where(r => !r.IsDeleted)
+                .Where(r => !r.IsSetupRecipe)
+                .Where(r => r.ChefId == userId)
+                .Include(r => r.Chef)
+                .Include(r => r.Favorite)
+                .Include(r => r.Category)
+                .Include(r => r.RecipeIngredients)
+                    .ThenInclude(ri => ri.Ingredient)
+                        .ThenInclude(i => i.Store)
+                .Include(r => r.RecipeIngredients)
+                    .ThenInclude(ri => ri.Unit)
+                .OrderBy(r => r.RecipeId) // REQUIRED for pagination
+                .Skip(skip)
+                .Take(pageSize)
+                .Select(r => new RecipeDto
+                {
+                    RecipeId = r.RecipeId,
+                    RecipeName = r.RecipeName,
+                    Description = r.RecipeDescription,
+                    ChefName = r.Chef.UserName,
+                    ChefEmail = r.Chef.Email,
+                    Category = r.Category.Category1,
+                    Favorite = r.Favorite.Favorite1,
+                    Stars = r.Stars,
+                    Photo = r.Photo,
+                    Prep = r.Prep,
+                    CookTime = r.CookTime,
+                    Serves = r.Serves,
+                    IsClone = r.IsClone,
+                    Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
+                    {
+                        RecipeId = ri.RecipeId,
+                        IngredientId = ri.IngredientId,
+                        Quantity = ri.Quantity,
+                        UnitId = ri.UnitId,
+                        IngredientName = ri.Ingredient.IngredientName,
+                        StoreName = ri.Ingredient.Store.StoreName,
+                        StoreUrl = ri.Ingredient.Store.StoreUrl,
+                        UnitName = ri.Unit != null ? ri.Unit.Unit1 : null
+                    }).ToList()
+                })
+                .OrderBy(r => r.RecipeId)
+                .ToListAsync();
 
             return recipes;
         }
