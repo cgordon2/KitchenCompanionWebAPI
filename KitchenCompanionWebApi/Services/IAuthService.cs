@@ -10,6 +10,7 @@ namespace KitchenCompanionWebApi.Services
         Task<string?> LoginAsync(UserDto request);
         Task SetupProfile(UserDto request);
         Task<User?> GetUser(string request);
+        Task<List<User>> SearchUsers(UserDto request); 
         Task<List<User>> GetUsers(int page, int pageSize);
         Task<string?> InsertFollower(FollowerDto dto);
         Task<string?> DeleteFollower(FollowerDto dto);

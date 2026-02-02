@@ -10,7 +10,7 @@ namespace KitchenCompanionWebApi.Services
         Task<List<RecipeDto>> GetFavoriteRecipes(); 
         Task<RecipeDto> GetSingleRecipe(int recipeId); 
         Task<List<IngredientDto>> GetAllIngredients();
-        Task<bool> DeleteRecipe(int recipeId);
+        Task<bool> DeleteRecipe(RecipeDto dto);
         Task<RecipeDto> EditRecipe(RecipeDto recipe);
         Task<RecipeDto> AddRecipe(RecipeDto recipe);
         Task<bool> UnfavoriteRecipe(int recipeId);
@@ -28,6 +28,9 @@ namespace KitchenCompanionWebApi.Services
 
         Task<List<RecipeDto>> GetRecipesByUserId(int page, int pageSize, int userId);
 
-        Task<List<RecipeDto>> SearchRecipesAsync(RecipeSearchDto search); 
+        Task<List<RecipeDto>> SearchRecipesAsync(RecipeSearchDto search);
+        Task BatchUpdateShoppingStatus(
+    List<string> markDone,
+    List<string> markUndone); 
     }
 }

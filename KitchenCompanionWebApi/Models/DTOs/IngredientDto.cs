@@ -21,6 +21,8 @@
 
         public string? CookTime { get; set; }
 
+        public int? Quantity { get; set; } 
+
         public string? Serves { get; set; }
         public string? IngredientGUID { get; set; }
     }

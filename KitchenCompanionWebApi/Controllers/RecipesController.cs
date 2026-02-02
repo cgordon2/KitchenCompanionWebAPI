@@ -53,10 +53,13 @@ namespace KitchenCompanionWebApi.Controllers
             return true; 
         }
 
-        [HttpPost("MarkShoppingComplete")]
-        public async Task<ActionResult<bool>> MarkShoppingListItemComplete(ShoppingListDto dto)
+        [HttpPost("UpdateShoppingList")]
+        public async Task<ActionResult<bool>> MarkShoppingListItemComplete([FromBody] ShoppingListBatchUpdateDto dto)
         {
-            await recipeService.MarkShoppingListComplete(dto.Id);
+            if (!dto.MarkDone.Any() && !dto.MarkUndone.Any())
+                return BadRequest("No updates provided");
+
+            await recipeService.BatchUpdateShoppingStatus(dto.MarkDone, dto.MarkUndone); 
 
             return true; 
         }
@@ -200,8 +203,15 @@ namespace KitchenCompanionWebApi.Controllers
 
 
         [HttpPost("DeleteRecipe")]
-        public async Task<bool> DeleteRecipe(int id)
+        public async Task<ActionResult<bool>> DeleteRecipe(RecipeDto dto)
         { 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState); 
+            }
+
+            await recipeService.DeleteRecipe(dto); 
+
             return await Task.FromResult(false);
         }
     }

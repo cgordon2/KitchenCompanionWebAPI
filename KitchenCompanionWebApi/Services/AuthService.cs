@@ -104,10 +104,13 @@ namespace KitchenCompanionWebApi.Services
         public async Task<List<User>> GetUsers(int page, int pageSize)
         {
             return await context.Users
-                .Where(u => u.IsSetup)        // REQUIRED for paging
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
+                .Where(u => u.IsSetup) 
                 .ToListAsync(); 
+        }
+
+        public async Task<List<User>> SearchUsers(UserDto dto)
+        {
+            return null; 
         }
 
         public async Task<User?> GetUser(string user)
@@ -135,7 +138,8 @@ namespace KitchenCompanionWebApi.Services
                 foundUser.FollowersCount = 0;
                 foundUser.FollowingCount = 0;
                 foundUser.Email = user.Email;
-                foundUser.IsSetup = true; 
+                foundUser.IsSetup = true;
+                foundUser.AvatarUrl = user.AvatarUrl;  
 
                 await context.SaveChangesAsync(); 
             }

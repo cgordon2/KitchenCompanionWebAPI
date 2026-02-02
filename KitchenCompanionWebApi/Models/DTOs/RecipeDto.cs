@@ -6,13 +6,13 @@ namespace KitchenCompanionWebApi.Models.DTOs
     {
         public int? RecipeId { get; set; }
         [JsonPropertyName("recipeName")]
-        public string RecipeName { get; set; }
+        public string? RecipeName { get; set; }
         [JsonPropertyName("description")]
-        public string Description { get; set; }
-        public string ChefName { get; set; }
-        public string ChefEmail { get; set; }
-        public string Category { get; set; } 
-        public string Favorite { get; set; }
+        public string? Description { get; set; }
+        public string? ChefName { get; set; }
+        public string? ChefEmail { get; set; }
+        public string? Category { get; set; } 
+        public string? Favorite { get; set; }
         public string? Photo { get; set; } 
         public int? Stars { get; set; } 
         public int? CookTime { get; set; } 
@@ -20,7 +20,7 @@ namespace KitchenCompanionWebApi.Models.DTOs
 
         public int? Prep { get; set; } 
         public bool IsClone { get; set; } 
-        public List<RecipeIngredientDto> Ingredients { get; set; } = new();
+        public List<RecipeIngredientDto>? Ingredients { get; set; } = new();
     }
 
     public class RecipeIngredientDto

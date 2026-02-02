@@ -7,5 +7,6 @@
         public string NoneWords { get; set; }
         public int loggedInUserGuid { get; set; } 
         public bool SearchOnlyUser { get; set; } 
+        public int? Stars { get; set; } 
     }
 }

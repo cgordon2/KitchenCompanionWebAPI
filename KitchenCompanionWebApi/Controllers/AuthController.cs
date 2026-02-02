@@ -22,6 +22,12 @@ namespace KitchenCompanionWebApi.Controllers
            return Ok(user);
         }
 
+        [HttpPost("Search")]
+        public async Task<ActionResult<List<User>>> SearchUser()
+        {
+            return Ok(new List<User>()); 
+        }
+
         [HttpGet("ListUsers")]
         public async Task<ActionResult<List<User>>> GetUsers(string page)
         {
