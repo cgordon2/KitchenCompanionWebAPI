@@ -1,6 +1,8 @@
 ﻿using KitchenCompanionWebApi.Models.DatabaseFirst;
 using KitchenCompanionWebApi.Models.DTOs; 
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace KitchenCompanionWebApi.Services
 {
@@ -13,7 +15,183 @@ namespace KitchenCompanionWebApi.Services
             _recipeEntitiesContext = context;
         }
 
-        public async Task BatchUpdateShoppingStatus(
+        public async Task<List<PantryDto>> GetPantryItems(string username)
+        {
+            // STEP 1: Load pantries (filter in SQL only)
+            var pantries = await _recipeEntitiesContext.Pantries
+                .Where(p => p.UserName.ToString() == username)
+                .ToListAsync();
+
+            // STEP 2: Load ingredients
+            var ingredients = await _recipeEntitiesContext.Ingredients
+                .ToListAsync();
+
+            // STEP 3: Match IN MEMORY (string -> int)
+            var result = pantries
+                .Where(p => int.TryParse(p.IngredientGuid, out _))
+                .Select(p =>
+                {
+                    var pid = int.Parse(p.IngredientGuid);
+
+                    var ingredient = ingredients
+                        .FirstOrDefault(i => i.IngredientId == pid);
+
+                    if (ingredient == null)
+                        return null;
+
+                    return new PantryDto
+                    {
+                        UserName = p.UserName,
+                        Quantity = p.Quantity,
+                        IngredientGUID = p.IngredientGuid,
+                        PantryID = p.Id,
+                        IngredientName = ingredient.IngredientName
+                    };
+                })
+                .Where(x => x != null)
+                .ToList();
+
+            var grouped = result
+    .GroupBy(x => new { x.IngredientName, x.Quantity })
+    .Select(g => new PantryDto
+    {
+        IngredientName = g.Key.IngredientName,
+        Quantity = g.Sum(x => x.Quantity),
+        PantryID = g.First().PantryID,
+        IngredientGUID = g.First().IngredientGUID,
+        UserName = g.First().UserName
+    })
+    .ToList();
+
+            return result;
+        }
+
+        public async Task UpdatePantryByUser(string username, int pantryID, int quantity)
+        {
+            var pantryItem = _recipeEntitiesContext.Pantries
+    .Where(r => r.Id == pantryID).FirstOrDefault();
+
+            if (pantryItem != null)
+            {
+                pantryItem.Quantity = quantity;
+                await _recipeEntitiesContext.SaveChangesAsync();
+            }
+
+            Console.WriteLine(pantryItem.Quantity); 
+
+           // 
+        }
+
+        public async Task<List<PantryDto>> UpdatePantryByRecipe(string username, int pantryId, int quantity, int ingredientGuid)
+        {
+            var pantryItem =  _recipeEntitiesContext.Pantries
+                .Where(r => r.Id == pantryId).FirstOrDefault();
+
+            if (pantryItem != null)
+            {
+                pantryItem.Quantity = 0;
+
+                await _recipeEntitiesContext.SaveChangesAsync();
+            }
+
+
+            return new List<PantryDto>();
+
+            /*var recipeItem = await _recipeEntitiesContext.Recipes
+                .Include(r => r.RecipeIngredients)
+                .FirstOrDefaultAsync(r => r.RecipeId == recipeId);
+
+            if (recipeItem == null)
+                return new List<PantryDto>();
+
+            // Ingredient GUIDs as strings
+            var ingredientGuidStrings = recipeItem.RecipeIngredients
+                .Select(x => x.IngredientId.ToString())
+                .ToList();
+
+            var ingredientIds = ingredientGuidStrings
+    .Select(int.Parse)
+    .ToList();
+
+            var ingredients = await _recipeEntitiesContext.Ingredients
+                .Where(i => ingredientIds.Contains(i.IngredientId))
+                .ToListAsync();
+
+            var ingredientLookup = ingredients
+    .ToDictionary(
+        i => i.IngredientId,
+        i => i.Quantity
+    );
+            var pantries = await _recipeEntitiesContext.Pantries.ToListAsync();
+            var result = new List<PantryDto>();
+
+            foreach (var pantry in pantries)
+            {
+                var pantryGuid = pantry.IngredientGuid?.ToLowerInvariant();
+                if (pantryGuid == null) continue;
+
+                if (ingredientLookup.TryGetValue(int.Parse(pantryGuid), out var ingredientQty))
+                {
+                    pantry.Quantity -= ingredientQty ?? 0; 
+
+                    if (pantry.Quantity < 0)
+                        pantry.Quantity = 0;
+
+                    result.Add(new PantryDto
+                    {
+                        IngredientGUID = pantry.IngredientGuid,
+                        Quantity = pantry.Quantity
+                    });
+                }
+            }
+
+            return result; **/
+        }
+
+        /** use this **/ 
+        public async Task UpdatePantryQuantity(PantryDto dto)
+        {
+            var pantryItem = await _recipeEntitiesContext.Pantries.Where(r => r.Id == dto.PantryID).FirstOrDefaultAsync();
+
+            if (pantryItem != null)
+            {
+                if (pantryItem.UserName == dto.UserName)
+                {
+                    if (dto.Quantity >= 0)
+                    {
+                        pantryItem.Quantity = dto.Quantity;
+
+                        await _recipeEntitiesContext.SaveChangesAsync();
+                    }
+                }
+            }
+        }
+
+        public async Task CreatePantryItem(List<PantryDto> dtos, string username)
+        { 
+            foreach (var dto in dtos)
+            {
+                var ingredientGuid = dto.IngredientGUID;
+                var ingredientQty = dto.Quantity;
+
+                var db = new Pantry
+                {
+                    IngredientGuid = ingredientGuid,
+                    UserName = username,
+                    Quantity = ingredientQty
+                };
+
+                _recipeEntitiesContext.Pantries.Add(db);
+                await _recipeEntitiesContext.SaveChangesAsync(); 
+            }
+        }
+
+        public async Task<List<Category>> GetCategories()
+        {
+            return await _recipeEntitiesContext.Categories.Where(r => r.Category1 != "User2").ToListAsync(); 
+        }
+
+        public async Task BatchUpdateShoppingStatus(string username,
     List<string> markDone,
     List<string> markUndone)
         {
@@ -21,6 +199,7 @@ namespace KitchenCompanionWebApi.Services
             {
                 var doneItems = await _recipeEntitiesContext.ShoppingLists
                     .Where(i => markDone.Contains(Convert.ToString(i.ShoppingListId)))
+                    .Where(r => r.UserName == username)
                     .ToListAsync();
 
                 foreach (var item in doneItems)
@@ -34,6 +213,7 @@ namespace KitchenCompanionWebApi.Services
             {
                 var undoneItems = await _recipeEntitiesContext.ShoppingLists
                     .Where(i => markUndone.Contains(Convert.ToString(i.ShoppingListId)))
+                    .Where(r => r.UserName == username)
                     .ToListAsync();
 
                 foreach (var item in undoneItems)
@@ -44,6 +224,70 @@ namespace KitchenCompanionWebApi.Services
 
             await _recipeEntitiesContext.SaveChangesAsync();
         }
+
+        public async Task<List<Unit>> GetUnits()
+        {
+            IQueryable<Unit> query = _recipeEntitiesContext.Units;
+
+            return await query.ToListAsync(); 
+        }
+
+        public async Task<List<RecipeDto>> SearchRecipesAsyncPagination(
+            string search,
+            int page,
+            int pageSize,
+            string chefName)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+
+            int skip = (page - 1) * pageSize;
+            search = search?.Trim();
+             
+            IQueryable<Recipe> query = _recipeEntitiesContext.Recipes;
+            query = query.Where(r =>
+                r.RecipeName.Contains(search) ||
+                r.RecipeDescription.Contains(search));
+
+
+            query = query.Where(r => !r.IsDeleted);
+            query = query
+    .OrderByDescending(r => r.RecipeId) // always order before Skip
+    .Skip(skip)
+    .Take(pageSize);
+
+            // FINAL PROJECTION (NO Include needed)
+            return await query
+                .Select(r => new RecipeDto
+                {
+                    RecipeId = r.RecipeId,
+                    RecipeName = r.RecipeName,
+                    Description = r.RecipeDescription,
+                    ChefName = r.Chef.UserName,
+                    ChefEmail = r.Chef.Email,
+                    Photo = r.Photo,
+                    Stars = r.Stars,
+                    CookTime = r.CookTime,
+                    Prep = r.Prep,
+                    Serves = r.Serves,
+                    Category = r.Category.Category1,
+                    IsClone = r.IsClone,
+                    Favorite = r.Favorite.Favorite1,
+
+                    Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
+                    {
+                        RecipeId = r.RecipeId,
+                        IngredientId = ri.IngredientId,
+                        Quantity = ri.Quantity,
+                        UnitId = ri.UnitId,
+                        IngredientName = ri.Ingredient.IngredientName,
+                        StoreName = ri.Ingredient.Store.StoreName,
+                        StoreUrl = ri.Ingredient.Store.StoreUrl
+                    }).ToList()
+                })
+                .ToListAsync();
+        }
+
 
         public async Task<List<RecipeDto>> SearchRecipesAsync(RecipeSearchDto search)
         {
@@ -303,28 +547,50 @@ namespace KitchenCompanionWebApi.Services
             return foundRecipes; 
         }
 
-        public async Task<bool> FavoriteRecipe(int recipeId)
+        public async Task<bool> FavoriteRecipe(int recipeId, int userId)
         {
             var recipe = await _recipeEntitiesContext.Recipes.Include(r => r.Favorite)
             .FirstOrDefaultAsync(r => r.RecipeId == recipeId);
+            
+            if (recipe != null)
+            {
+                if (recipe.IsDeleted == false)
+                {
+                    if (recipe.ChefId != userId)
+                        return false;
 
-            recipe.Favorite.Favorite1 = "Yes";
+                    recipe.Favorite.Favorite1 = "Yes";
 
-            await _recipeEntitiesContext.SaveChangesAsync(); 
+                    await _recipeEntitiesContext.SaveChangesAsync();
 
-            return true; 
+                    return true;
+                }
+            }
+
+            return false; 
         }
 
-        public async Task<bool> UnfavoriteRecipe(int recipeId)
+        public async Task<bool> UnfavoriteRecipe(int recipeId, int userId)
         {
             var recipe = await _recipeEntitiesContext.Recipes.Include(r => r.Favorite)
              .FirstOrDefaultAsync(r => r.RecipeId == recipeId);
 
-            recipe.Favorite.Favorite1 = "No"; 
+            if (recipe != null)
+            {
+                if (recipe.IsDeleted == false)
+                {
+                    if (recipe.ChefId != userId)
+                        return false;
 
-            await _recipeEntitiesContext.SaveChangesAsync();
+                    recipe.Favorite.Favorite1 = "No";
 
-            return true;
+                    await _recipeEntitiesContext.SaveChangesAsync();
+
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public async Task<bool> DeleteRecipe(RecipeDto dto)
@@ -338,12 +604,35 @@ namespace KitchenCompanionWebApi.Services
             }
             else
             {
-                recipe.IsDeleted = true;
+                if (recipe.IsDeleted == false)
+                {
+                    recipe.IsDeleted = true;
 
-                await _recipeEntitiesContext.SaveChangesAsync(); 
+                    await _recipeEntitiesContext.SaveChangesAsync();
+                }
             }
 
                 return true; 
+        }
+
+        public async Task<bool> IsRecipeAuthed(int userId, RecipeDto dto)
+        {
+            var recipe = await _recipeEntitiesContext.Recipes.Where(r => r.RecipeId == dto.RecipeId).FirstOrDefaultAsync(); 
+
+            if (recipe != null)
+            {
+                if (recipe.ChefId == userId)
+                {
+                    if (!recipe.IsDeleted)
+                        return true;
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return false; 
         }
 
         public async Task<RecipeDto> EditRecipe(RecipeDto dto)
@@ -352,16 +641,17 @@ namespace KitchenCompanionWebApi.Services
                  .FirstOrDefaultAsync(r => r.RecipeId == dto.RecipeId);
 
             if (recipe == null)
-                return new RecipeDto { };
+                return new RecipeDto { }; 
 
             recipe.RecipeName = dto.RecipeName;
             recipe.RecipeDescription = dto.Description;
             recipe.CategoryId = Convert.ToInt32(dto.Category);
-            recipe.Stars = dto.Stars;
+            //recipe.Stars = dto.Stars;
 
-            recipe.CookTime = dto.CookTime;
+            /*recipe.CookTime = dto.CookTime;
             recipe.Prep = dto.Prep;
-            recipe.Serves = dto.Serves; 
+            recipe.Serves = dto.Serves; **/
+            
 
             _recipeEntitiesContext.RecipeIngredients.RemoveRange(
                 recipe.RecipeIngredients
@@ -387,13 +677,41 @@ namespace KitchenCompanionWebApi.Services
             };
         }
 
-        public async Task<RecipeDto> AddRecipe(RecipeDto dto)
+        public async Task<RecipeDto> AddRecipe(string username, RecipeDto dto)
         {
             var recipeIngredients = dto.Ingredients;
 
-            var user = await _recipeEntitiesContext.Users.FirstOrDefaultAsync(r => r.UserName == dto.ChefName);
+            var user = await _recipeEntitiesContext.Users.FirstOrDefaultAsync(r => r.UserName == username);
 
             var isCloned = dto.IsClone; 
+
+            if (isCloned)
+            {
+                var recipeToClone = await _recipeEntitiesContext.Recipes.Where(r => r.RecipeId == dto.RecipeId).FirstOrDefaultAsync();
+
+                if (recipeToClone != null)
+                {
+                    if (recipeToClone.IsDeleted)
+                        return new RecipeDto();
+
+                    if (recipeToClone != null)
+                    {
+                        if (recipeToClone.ChefId == user.ChefId)
+                        {
+                            return new RecipeDto();
+                        }
+                    }
+                    else
+                    {
+                        // invalid recipe id
+                        return new RecipeDto();
+                    }
+                }
+                else
+                {
+                    return new RecipeDto(); 
+                }
+            }
 
             var recipe = new Recipe
             {
@@ -464,7 +782,7 @@ namespace KitchenCompanionWebApi.Services
             var ingredient = new Ingredient
             {
                 IngredientName = dto.IngredientName, 
-                UnitId = 1,     // Use ID of an existing Unit
+                UnitId = Convert.ToInt32(dto.UnitName),     // Use ID of an existing Unit
                 StoreId = Convert.ToInt32(dto.StoreName),
                 Quantity = dto.Quantity,
                 Photo = dto.Photo, 
@@ -551,7 +869,8 @@ namespace KitchenCompanionWebApi.Services
                     Photo = ig.Photo, 
                     IngredientGUID = Convert.ToString(ig.IngredientId), 
                     CookTime = ig.CookTime, 
-                    Serves = ig.Serves
+                    Serves = ig.Serves, 
+                    Quantity = ig.Quantity,
                 }
             ).ToListAsync();
 
@@ -576,8 +895,10 @@ namespace KitchenCompanionWebApi.Services
                     RecipeName = r.RecipeName,
                     Description = r.RecipeDescription,
                     ChefName = r.Chef.UserName,
-                    ChefEmail = r.Chef.Email,
+                    ChefEmail = r.Chef.Email, 
+                    Photo = r.Photo,
                     Category = r.Category.Category1,
+                    IsDeleted = r.IsDeleted, 
                     Favorite = r.Favorite.Favorite1,
                     Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
                     {
@@ -599,6 +920,55 @@ namespace KitchenCompanionWebApi.Services
             }
 
             return recipe; 
+        }
+
+        public async Task<List<RecipeDto>> GetFavRecipesPagination(string chefId, int skip, int pageSize)
+        {
+            var recipes = await _recipeEntitiesContext.Recipes
+                                .Include(r => r.Chef)
+                                .Include(r => r.Favorite)
+                                                .Include(r => r.Chef)
+                                .Include(r => r.Category)
+                                .Include(r => r.RecipeIngredients)
+                                    .ThenInclude(ri => ri.Ingredient)
+                                        .ThenInclude(i => i.Store)
+                                .Include(r => r.RecipeIngredients)
+                                    .ThenInclude(ri => ri.Unit)
+                                .Where(r => r.Favorite.Favorite1 == "Yes")
+                                .Where(r => r.Chef.UserName == chefId)
+                                .Select(r => new RecipeDto
+                                {
+                                    RecipeId = r.RecipeId,
+                                    RecipeName = r.RecipeName,
+                                    Description = r.RecipeDescription,
+                                    Stars = r.Stars,
+                                    Photo = r.Photo,
+                                    Prep = r.Prep,
+                                    CookTime = r.CookTime,
+                                    Serves = r.Serves,
+                                    ChefName = r.Chef.UserName,
+                                    ChefEmail = r.Chef.Email,
+                                    Category = r.Category.Category1,
+                                    Favorite = r.Favorite.Favorite1,
+                                    Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
+                                    {
+                                        RecipeId = ri.RecipeId,
+                                        IngredientId = ri.IngredientId,
+                                        Quantity = ri.Quantity,
+                                        UnitId = ri.UnitId,
+                                        IngredientName = ri.Ingredient.IngredientName,
+                                        StoreName = ri.Ingredient.Store.StoreName,
+                                        StoreUrl = ri.Ingredient.Store.StoreUrl,
+                                        UnitName = ri.Unit != null ? ri.Unit.Unit1 : null
+                                    }).ToList()
+                                })
+                                .OrderBy(r => r.RecipeId)
+                                // ✅ Pagination
+                                .Skip(skip)
+                                .Take(pageSize)
+                                .ToListAsync();
+
+            return recipes;
         }
 
         public async Task<List<RecipeDto>> GetFavoriteRecipes()
@@ -692,7 +1062,56 @@ namespace KitchenCompanionWebApi.Services
 
             return recipes;
         }
+        public async Task<List<RecipeDto>> GetRecipesByUserIdPagination(int page, int pageSize, int userId)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
 
+            int skip = (page - 1) * pageSize;
+
+            return await _recipeEntitiesContext.Recipes
+                .Where(r => !r.IsDeleted)
+                .Where(r => !r.IsSetupRecipe)
+                .Where(r => r.ChefId == userId)
+
+                // ✅ Order BEFORE Skip
+                .OrderBy(r => r.RecipeId)
+
+                // ✅ Pagination
+                .Skip(skip)
+                .Take(pageSize)
+
+                // Projection
+                .Select(r => new RecipeDto
+                {
+                    RecipeId = r.RecipeId,
+                    RecipeName = r.RecipeName,
+                    Description = r.RecipeDescription,
+                    ChefName = r.Chef.UserName,
+                    ChefEmail = r.Chef.Email,
+                    Category = r.Category.Category1,
+                    Favorite = r.Favorite.Favorite1,
+                    Stars = r.Stars,
+                    Photo = r.Photo,
+                    Prep = r.Prep,
+                    CookTime = r.CookTime,
+                    Serves = r.Serves,
+                    IsClone = r.IsClone,
+                    IsDeleted = r.IsDeleted, 
+                    Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
+                    {
+                        RecipeId = ri.RecipeId,
+                        IngredientId = ri.IngredientId,
+                        Quantity = ri.Quantity,
+                        UnitId = ri.UnitId,
+                        IngredientName = ri.Ingredient.IngredientName,
+                        StoreName = ri.Ingredient.Store.StoreName,
+                        StoreUrl = ri.Ingredient.Store.StoreUrl,
+                        UnitName = ri.Unit != null ? ri.Unit.Unit1 : null
+                    }).ToList()
+                })
+                .ToListAsync();
+        }
         public async Task<List<RecipeDto>> GetRecipesByUserId(int page, int pageSize, int userId)
         {
             int skip = (page - 1) * pageSize;
@@ -741,6 +1160,130 @@ namespace KitchenCompanionWebApi.Services
                 .ToListAsync();
 
             return recipes;
+        }
+
+        public async Task<List<RecipeDto>> GetRecipesPagination(int page = 1, int pageSize = 20, string? chefName = null, bool? isCloned = false)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+
+            int skip = (page - 1) * pageSize;
+
+            var query = _recipeEntitiesContext.Recipes
+                .Where(r => !r.IsDeleted) 
+                .Where(r => !r.IsSetupRecipe)
+                .Include(r => r.Chef)
+                .Include(r => r.Favorite)
+                .Include(r => r.Category)
+                .Include(r => r.RecipeIngredients)
+                    .ThenInclude(ri => ri.Ingredient)
+                        .ThenInclude(i => i.Store)
+                .Include(r => r.RecipeIngredients)
+                    .ThenInclude(ri => ri.Unit)
+                .AsQueryable();
+
+            if (isCloned.HasValue)
+            {
+                query = query.Where(r => r.IsClone == isCloned.Value);
+            }
+
+            // ✅ Optional chef filter
+            if (!string.IsNullOrEmpty(chefName))
+            {
+                query = query.Where(r => r.Chef.UserName == chefName);
+            }
+
+            var recipes = await query
+                .OrderBy(r => r.RecipeId)
+                .Skip(skip)
+                .Take(pageSize)
+                .Select(r => new RecipeDto
+                {
+                    RecipeId = r.RecipeId,
+                    RecipeName = r.RecipeName,
+                    Description = r.RecipeDescription,
+                    ChefName = r.Chef.UserName,
+                    ChefEmail = r.Chef.Email,
+                    Category = r.Category.Category1,
+                    Favorite = r.Favorite.Favorite1,
+                    Stars = r.Stars,
+                    Photo = r.Photo,
+                    Prep = r.Prep,
+                    CookTime = r.CookTime,
+                    Serves = r.Serves,
+                    IsClone = r.IsClone,
+                    IsDeleted = r.IsDeleted, 
+                    Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
+                    {
+                        RecipeId = ri.RecipeId,
+                        IngredientId = ri.IngredientId,
+                        Quantity = ri.Quantity,
+                        UnitId = ri.UnitId,
+                        IngredientName = ri.Ingredient.IngredientName,
+                        StoreName = ri.Ingredient.Store.StoreName,
+                        StoreUrl = ri.Ingredient.Store.StoreUrl,
+                        UnitName = ri.Unit != null ? ri.Unit.Unit1 : null
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            return recipes;
+            /* if (page < 1) page = 1;
+             if (pageSize < 1) pageSize = 20;
+
+             int skip = (page - 1) * pageSize;
+
+             var recipes = await _recipeEntitiesContext.Recipes
+                 .Where(r => !r.IsDeleted)
+                 .Where(r => !r.IsClone)
+                 .Where(r => !r.IsSetupRecipe)
+                 .Include(r => r.Chef)
+                 .Include(r => r.Favorite)
+                 .Include(r => r.Category)
+                 .Include(r => r.RecipeIngredients)
+                     .ThenInclude(ri => ri.Ingredient)
+                         .ThenInclude(i => i.Store)
+                 .Include(r => r.RecipeIngredients)
+                     .ThenInclude(ri => ri.Unit)
+
+                 // IMPORTANT: Order BEFORE Skip/Take
+                 .OrderBy(r => r.RecipeId)
+
+                 // Pagination
+                 .Skip(skip)
+                 .Take(pageSize)
+
+                 .Select(r => new RecipeDto
+                 {
+                     RecipeId = r.RecipeId,
+                     RecipeName = r.RecipeName,
+                     Description = r.RecipeDescription,
+                     ChefName = r.Chef.UserName,
+                     ChefEmail = r.Chef.Email,
+                     Category = r.Category.Category1,
+                     Favorite = r.Favorite.Favorite1,
+                     Stars = r.Stars,
+                     Photo = r.Photo,
+                     Prep = r.Prep,
+                     CookTime = r.CookTime,
+                     Serves = r.Serves,
+                     IsClone = r.IsClone,
+
+                     Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
+                     {
+                         RecipeId = ri.RecipeId,
+                         IngredientId = ri.IngredientId,
+                         Quantity = ri.Quantity,
+                         UnitId = ri.UnitId,
+                         IngredientName = ri.Ingredient.IngredientName,
+                         StoreName = ri.Ingredient.Store.StoreName,
+                         StoreUrl = ri.Ingredient.Store.StoreUrl,
+                         UnitName = ri.Unit != null ? ri.Unit.Unit1 : null
+                     }).ToList()
+                 })
+                 .ToListAsync();
+
+             return recipes;**/
         }
 
         /** Fetch batch then process on device ***/

@@ -20,6 +20,7 @@ namespace KitchenCompanionWebApi.Models.DTOs
 
         public int? Prep { get; set; } 
         public bool IsClone { get; set; } 
+        public bool? IsDeleted { get; set; } 
         public List<RecipeIngredientDto>? Ingredients { get; set; } = new();
     }
 

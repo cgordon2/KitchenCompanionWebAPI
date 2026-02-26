@@ -16,6 +16,7 @@ namespace KitchenCompanionWebApi.Services
         Task<string?> DeleteFollower(FollowerDto dto);
 
         Task<List<UserFollowerDto>> GetFollowers(int currentUserId);
-        Task<List<UserFollowerDto>> GetFollowing(int currentUserId); 
+        Task<List<UserFollowerDto>> GetFollowing(int currentUserId);
+        Task<List<User>> GetUsersWeb(int page, int pageSize);
     }
 }

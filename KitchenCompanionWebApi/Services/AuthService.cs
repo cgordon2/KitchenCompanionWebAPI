@@ -89,6 +89,19 @@ namespace KitchenCompanionWebApi.Services
             return string.Empty; 
         }
 
+        public async Task<List<User>> GetUsersWeb(int page, int pageSize)
+        {
+            if (page < 1) page = 1;
+
+            int skip = (page - 1) * pageSize;
+
+            return await context.Users
+                .OrderBy(u => u.UserName)
+                .Skip(skip)
+                .Take(pageSize) 
+                .ToListAsync();
+        }
+
         public async Task<string?> InsertFollower(FollowerDto dto)
         {
             var follower = new Follower(); 

@@ -27,6 +27,8 @@ public partial class RecipeEntitiesContext : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
+    public virtual DbSet<Pantry> Pantries { get; set; }
+
     public virtual DbSet<Recipe> Recipes { get; set; }
 
     public virtual DbSet<RecipeIngredient> RecipeIngredients { get; set; }
@@ -142,6 +144,15 @@ public partial class RecipeEntitiesContext : DbContext
             entity.Property(e => e.UserId).HasColumnName("User_ID");
         });
 
+        modelBuilder.Entity<Pantry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Pantry__3214EC0707BB18D1");
+
+            entity.ToTable("Pantry");
+
+            entity.Property(e => e.IngredientGuid).HasColumnName("IngredientGUID");
+        });
+
         modelBuilder.Entity<Recipe>(entity =>
         {
             entity.HasKey(e => e.RecipeId).HasName("PK__Recipes__0959CE39AE54C9B7");
@@ -221,12 +232,8 @@ public partial class RecipeEntitiesContext : DbContext
             entity.ToTable("ShoppingList");
 
             entity.Property(e => e.ShoppingListId).HasColumnName("shopping_list_id");
-            entity.Property(e => e.Category)
-                .HasColumnType("text")
-                .HasColumnName("category");
-            entity.Property(e => e.Description)
-                .HasColumnType("text")
-                .HasColumnName("description");
+            entity.Property(e => e.Category).HasColumnName("category");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.IsDone).HasColumnName("is_done");
             entity.Property(e => e.UserName)
                 .HasMaxLength(500)
