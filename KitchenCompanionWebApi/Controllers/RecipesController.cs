@@ -22,10 +22,16 @@ namespace KitchenCompanionWebApi.Controllers
             return foundRecipes; 
         }
 
+	[Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
         [HttpGet("GetPantryItems")]
         public async Task<ActionResult<List<PantryDto>>> GetPantryItems()
         {
-            var items = await recipeService.GetPantryItems("cameron");
+            var test = User.Identity?.Name;
+
+            if (test == null)
+                return Unauthorized();
+
+            var items = await recipeService.GetPantryItems(test);
 
             return items; 
         }
@@ -44,10 +50,15 @@ namespace KitchenCompanionWebApi.Controllers
             return new OkObjectResult(recipes); 
         }
 
+        [Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
         [HttpPost("CreatePantryItems")]
         public async Task<ActionResult<bool>> CreatePantryItem(List<PantryDto> pantryDtos)
         {
-            await recipeService.CreatePantryItem(pantryDtos, "cameron");
+	    var test = User.Identity?.Name; 
+	    if (test == null)
+		return Unauthorized(); 
+
+            await recipeService.CreatePantryItem(pantryDtos, test);
             return true; 
         }
 

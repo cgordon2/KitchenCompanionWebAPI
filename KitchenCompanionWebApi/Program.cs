@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System;
 using System.Text;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseKestrel();
@@ -38,10 +39,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy
-            .WithOrigins(
-                "http://localhost:5500",
-                "http://127.0.0.1:5500"
-            )
+            .WithOrigins("https://recipetracker.xyz")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -49,6 +47,12 @@ builder.Services.AddCors(options =>
 var key = new SymmetricSecurityKey(
     Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:Token"]!)
 );
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
 
 var tokenParams = new TokenValidationParameters
 {
@@ -121,8 +125,15 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 //app.Urls.Add("http://0.0.0.0:5285");
 // MUST BE BEFORE MapControllers
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+                       ForwardedHeaders.XForwardedProto
+});
+app.UseRouting(); 
+
 app.UseCors(x => x
-    .WithOrigins("http://127.0.0.1:5500")   // frontend
+    .WithOrigins("https://recipetracker.xyz")   // frontend
     .AllowAnyMethod()
     .AllowAnyHeader()
     .AllowCredentials()
@@ -131,10 +142,10 @@ app.UseCors(x => x
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader()
-);
-**/
+);**/
 
-app.UseCors("AllowFrontend");
+
+//app.UseCors("AllowFrontend");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -148,7 +159,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
-        @"C:\Users\gordo\OneDrive\Desktop\GH_Final_WebAPI\KitchenCompanionWebAPI\KitchenCompanionWebApi\UploadedImages"),
+        @"/home/uploadedimages"),
     RequestPath = "/uploads"
 });
 
