@@ -73,7 +73,7 @@ namespace KitchenCompanionWebApi.Controllers
         [HttpPost("UpdatePantryByUser")]
         public async Task<ActionResult<bool>> UpdatePantryByUser(PantryDto dto)
         {
-            await recipeService.UpdatePantryByUser("cameron", dto.PantryID, dto.Quantity); 
+            await recipeService.UpdatePantryByUser("devon", dto.PantryID, dto.Quantity); 
 
             return true;
         }

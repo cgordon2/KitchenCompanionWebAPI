@@ -180,11 +180,11 @@ namespace KitchenCompanionWebApi.Services
             return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
         }
 
-        public async Task<User?> RegisterAsync(UserDto request)
+        public async Task<string> RegisterAsync(UserDto request)
         {
             if (await context.Users.AnyAsync(u => u.UserName == request.Username))
             {
-                return new User(); 
+                return ""; 
             } 
 
             using (var context = new RecipeEntitiesContext())
@@ -235,9 +235,8 @@ namespace KitchenCompanionWebApi.Services
 
                 context.Recipes.Add(recipe);
                 await context.SaveChangesAsync();
-            } 
-
-            return new User(); 
+            		return CreateToken(user); 
+		} 
         }
     }
 }

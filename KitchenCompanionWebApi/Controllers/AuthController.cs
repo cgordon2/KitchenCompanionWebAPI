@@ -14,13 +14,13 @@ namespace KitchenCompanionWebApi.Controllers
     public class AuthController(IAuthService authService) : ControllerBase
     {
         [HttpPost("register")] 
-        public async Task<ActionResult<User>> Register(UserDto request)
+        public async Task<ActionResult<string>> Register(UserDto request)
         { 
-            var user = await authService.RegisterAsync(request);
-            if (user is null)
+            var token = await authService.RegisterAsync(request);
+            if (token == string.Empty)
                 return BadRequest("Username already exists");
             
-           return Ok(user);
+           return Ok(token);
         }
 
         [HttpPost("Search")]
@@ -117,9 +117,14 @@ namespace KitchenCompanionWebApi.Controllers
 
         [Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
         [HttpGet("TEST")]
-        public IActionResult TestAuthOnlyEndpoint()
+        public async Task<ActionResult<User>> TestAuthOnlyEndpoint()
         {
-            return Ok(User.Identity?.Name);
+	    var username = User.Identity?.Name; 
+	    if (username != null){ 
+	    	var user = await authService.GetUser(username); 
+		return Ok(user); 
+	    }
+            return Ok(false);
 
         }
     }
