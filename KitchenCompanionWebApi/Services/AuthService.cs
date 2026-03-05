@@ -144,17 +144,21 @@ namespace KitchenCompanionWebApi.Services
             
             if (foundUser is not null)
             {
-                foundUser.RealName = user.RealName;
-                foundUser.Language = user.Language; 
-                foundUser.ShortBio = user.ShortBio;
-                foundUser.Location = user.Location;
-                foundUser.FollowersCount = 0;
-                foundUser.FollowingCount = 0;
-                foundUser.Email = user.Email;
-                foundUser.IsSetup = true;
-                foundUser.AvatarUrl = user.AvatarUrl;  
+		var foundEmail = await context.Users.FirstOrDefaultAsync(u => u.Email == user.Email); 
+		
+		if (foundEmail == null){ 
+                	foundUser.RealName = user.RealName;
+                	foundUser.Language = user.Language; 
+                	foundUser.ShortBio = user.ShortBio;
+                	foundUser.Location = user.Location;
+                	foundUser.FollowersCount = 0;
+                	foundUser.FollowingCount = 0;
+                	foundUser.Email = user.Email;
+                	foundUser.IsSetup = true;
+                	foundUser.AvatarUrl = user.AvatarUrl;  
 
-                await context.SaveChangesAsync(); 
+                	await context.SaveChangesAsync();
+		} 
             }
         }
 
