@@ -643,6 +643,7 @@ namespace KitchenCompanionWebApi.Services
             if (recipe == null)
                 return new RecipeDto { }; 
 
+	    recipe.Photo = dto.Photo; 
             recipe.RecipeName = dto.RecipeName;
             recipe.RecipeDescription = dto.Description;
             recipe.CategoryId = Convert.ToInt32(dto.Category);

@@ -215,7 +215,7 @@ namespace KitchenCompanionWebApi.Controllers
             if (offset > 100_000)
                 return BadRequest("Page too large."); 
 
-            var recipes = await recipeService.GetFavRecipesPagination(re.ChefName, re.Page, re.PageSize); 
+            var recipes = await recipeService.GetFavRecipesPagination(re.ChefName, offset, re.PageSize); 
 
             return new OkObjectResult(recipes); 
         }
@@ -427,15 +427,13 @@ namespace KitchenCompanionWebApi.Controllers
         }
 
         [HttpPost("UploadImage")]
-        [Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
-        public async Task<ActionResult> UploadImage(IFormFile file)
+	[Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
+        public async Task<ActionResult> UploadImage([FromForm] IFormFile file)
         {
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            var uploadsFolder = Path.Combine(
-                Directory.GetCurrentDirectory(),
-                "UploadedImages");
+            var uploadsFolder = "/home/uploadedimages"; 
 
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
