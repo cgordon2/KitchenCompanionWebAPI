@@ -11,6 +11,9 @@ namespace KitchenCompanionWebApi.Services
         Task<List<RecipeDto>> GetFavoriteRecipes(); 
         Task<RecipeDto> GetSingleRecipe(int recipeId); 
         Task<List<IngredientDto>> GetAllIngredients();
+	
+	Task<List<IngredientDto>> SearchForRecipes(string query, int page, int pageSize); 
+
         Task<bool> DeleteRecipe(RecipeDto dto);
         Task<RecipeDto> EditRecipe(RecipeDto recipe);
         Task<RecipeDto> AddRecipe(string username, RecipeDto recipe);
@@ -48,5 +51,6 @@ namespace KitchenCompanionWebApi.Services
         Task CreatePantryItem(List<PantryDto> dtos, string username);
         Task<List<PantryDto>> UpdatePantryByRecipe(string username, int pantryId, int quantity, int ingredientGuid);
         Task UpdatePantryByUser(string username, int pantryID, int quantity); 
+	Task<List<IngredientDto>> GetAllIngredientsPagination(int pageNumber, int pageSize); 
     }
 }

@@ -22,6 +22,14 @@ namespace KitchenCompanionWebApi.Controllers
             return foundRecipes; 
         }
 
+	[HttpGet("SearchIngredients")]
+	public async Task<ActionResult<List<IngredientDto>>> SearchForIngredients(string query, int page, int pageSize)
+	{ 
+		var foundIngredients = await recipeService.SearchForRecipes(query, page, pageSize); 
+		return new OkObjectResult(foundIngredients); 
+	}
+	
+
 	[Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
         [HttpGet("GetPantryItems")]
         public async Task<ActionResult<List<PantryDto>>> GetPantryItems()
@@ -70,19 +78,31 @@ namespace KitchenCompanionWebApi.Controllers
             return true; 
         }
 
+        [Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
         [HttpPost("UpdatePantryByUser")]
         public async Task<ActionResult<bool>> UpdatePantryByUser(PantryDto dto)
         {
-            await recipeService.UpdatePantryByUser("devon", dto.PantryID, dto.Quantity); 
+	   // changed
+            var test = User.Identity?.Name;
+            if (test == null)
+                return Unauthorized(); 
+
+            await recipeService.UpdatePantryByUser(test, dto.PantryID, dto.Quantity); 
 
             return true;
         }
 
+        [Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
         [HttpPost("UpdatePantryByRecipe")]
         public async Task<ActionResult<List<PantryDto>>> UpdatePantryByRecipe(PantryDto dto)
         {
+           // changed
+            var test = User.Identity?.Name;
+            if (test == null)
+                return Unauthorized(); 
+	     // changed
             // @TODO: Need to pass in qty from dto.quantity
-            var pantryItems = await recipeService.UpdatePantryByRecipe("cameron", Convert.ToInt32(dto.PantryID), dto.Quantity, Convert.ToInt32(dto.IngredientGUID));  // then do select to dbo.ingredients to find out the qty = 1002, and 4018
+            var pantryItems = await recipeService.UpdatePantryByRecipe(test, Convert.ToInt32(dto.PantryID), dto.Quantity, Convert.ToInt32(dto.IngredientGUID));  // then do select to dbo.ingredients to find out the qty = 1002, and 4018
 
             return pantryItems; 
         }
@@ -246,6 +266,14 @@ namespace KitchenCompanionWebApi.Controllers
 
             return categories; 
         }
+
+
+	[HttpGet("IngredientsPagination")]
+	public async Task<ActionResult<List<IngredientDto>>> ListIngredientsByPagination(int pageNumber, int pageSize)
+	{
+		var ingredients = await recipeService.GetAllIngredientsPagination(pageNumber, pageSize); 
+		return ingredients; 
+	}
 
         [Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
         [HttpGet("ListByUserIdPagination")]

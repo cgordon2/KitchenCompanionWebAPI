@@ -30,6 +30,24 @@ namespace KitchenCompanionWebApi.Services
             return CreateToken(user); 
         }
 
+	public async Task<List<User>> SearchUsersPagination(string query, int page, int pageSize)
+	{ 
+		if (page < 1) page = 1; 
+		int skip = (page - 1) * pageSize;
+
+		var queryC = context.Users.AsQueryable(); 
+
+    		if (!string.IsNullOrWhiteSpace(query))
+    		{
+        		queryC = queryC.Where(u => u.UserName.Contains(query));
+    		}
+
+    		return await queryC
+        	.Skip(skip)
+        	.Take(pageSize)
+        	.ToListAsync();
+	}
+	
         public async Task<List<UserFollowerDto>> GetFollowers(int currentUserId)
         {
             return await context.Followers
@@ -96,6 +114,7 @@ namespace KitchenCompanionWebApi.Services
             int skip = (page - 1) * pageSize;
 
             return await context.Users
+		.Where(u => u.IsSetup)
                 .OrderBy(u => u.UserName)
                 .Skip(skip)
                 .Take(pageSize) 
@@ -137,6 +156,24 @@ namespace KitchenCompanionWebApi.Services
 
             return new User(); 
         }
+
+	public async Task UpdateEditProfile(UserDto user){ 
+		var foundUser = await context.Users.FirstOrDefaultAsync(u => u.UserName == user.Username); 
+
+		if (foundUser != null){ 
+			foundUser.RealName = foundUser.RealName; 
+			foundUser.Language = user.Language; 
+			foundUser.ShortBio = user.ShortBio; 
+			foundUser.Location = user.Location; 
+			foundUser.FollowersCount = 0; 
+			foundUser.FollowingCount = 0; 
+			foundUser.Email = foundUser.Email; 
+			foundUser.IsSetup = true; 
+			foundUser.AvatarUrl = user.AvatarUrl; 
+
+			await context.SaveChangesAsync(); 
+		}
+	}
 
         public async Task SetupProfile(UserDto user)
         {

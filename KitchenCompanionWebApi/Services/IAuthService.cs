@@ -9,6 +9,7 @@ namespace KitchenCompanionWebApi.Services
         Task<string> RegisterAsync(UserDto request);
         Task<string?> LoginAsync(UserDto request);
         Task SetupProfile(UserDto request);
+	Task UpdateEditProfile(UserDto user);
         Task<User?> GetUser(string request);
         Task<List<User>> SearchUsers(UserDto request); 
         Task<List<User>> GetUsers(int page, int pageSize);
@@ -18,5 +19,7 @@ namespace KitchenCompanionWebApi.Services
         Task<List<UserFollowerDto>> GetFollowers(int currentUserId);
         Task<List<UserFollowerDto>> GetFollowing(int currentUserId);
         Task<List<User>> GetUsersWeb(int page, int pageSize);
+
+	Task<List<User>> SearchUsersPagination(string query, int page, int pageSize); 
     }
 }

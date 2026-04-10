@@ -23,10 +23,12 @@ namespace KitchenCompanionWebApi.Controllers
            return Ok(token);
         }
 
-        [HttpPost("Search")]
-        public async Task<ActionResult<List<User>>> SearchUser()
+        [HttpGet("Search")]
+        public async Task<ActionResult<List<User>>> SearchUser(string query, int page, int pageSize)
         {
-            return Ok(new List<User>()); 
+	    var users = await authService.SearchUsersPagination(query, page, pageSize);
+
+            return Ok(users); 
         }
 
         [HttpGet("ListUsersWeb")]
@@ -80,6 +82,21 @@ namespace KitchenCompanionWebApi.Controllers
             return Ok(foundUser);
         }
 
+	[Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
+	[HttpPost("UpdateEditProfile")]
+	public async Task<ActionResult<UserDto>> UpdateEditProfile(UserDto request)
+	{ 
+            var test = User.Identity?.Name;
+
+            if (test == null)
+                return Unauthorized();
+	    request.Username = test; 
+
+	    await authService.UpdateEditProfile(request); 
+
+	    return Ok(request); 
+	}
+
         [Authorize(AuthenticationSchemes = "JwtBearer,JwtCookie")]
         [HttpPost("CompleteProfile")]
         public async Task<ActionResult<User>> CompleteProfile(UserDto request)
@@ -88,6 +105,16 @@ namespace KitchenCompanionWebApi.Controllers
 
             return Ok(request); 
         }
+
+	[HttpPost("logout")]
+	public IActionResult Logout()
+	{ 
+		Response.Cookies.Delete("access_token"); 
+		return Ok(new
+		{ 
+			success = true 
+		}); 
+	}
 
         [HttpPost("login")] 
         public async Task<ActionResult<string>> Login(UserDto request)

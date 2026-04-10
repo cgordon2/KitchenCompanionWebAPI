@@ -15,6 +15,40 @@ namespace KitchenCompanionWebApi.Services
             _recipeEntitiesContext = context;
         }
 
+	public async Task<List<IngredientDto>> SearchForRecipes(string search, int page, int pageSize)
+	{ 
+	    	if (page < 1) page = 1;
+            	
+            	int skip = (page - 1) * pageSize;
+            	search = search?.Trim();
+
+    		var query =
+        from ig in _recipeEntitiesContext.Ingredients
+        join u in _recipeEntitiesContext.Units on ig.UnitId equals u.UnitId
+        join so in _recipeEntitiesContext.Stores on ig.StoreId equals so.StoreId
+        select new { ig, u, so };
+
+		query = query.Where(r => r.ig.IngredientName.Contains(search)); 
+		query = query.Skip(skip).Take(pageSize); 
+		
+		return await query.Select(x => new IngredientDto 
+		{
+        IngredientId = x.ig.IngredientId,
+        IngredientName = x.ig.IngredientName,
+        UnitName = x.u.Unit1,
+        StoreName = x.so.StoreName,
+        StoreUrl = x.so.StoreUrl,
+        CreatedBy = x.ig.CreatedBy,
+        Stars = x.ig.Stars,
+        PrepTime = x.ig.Preptime,
+        Photo = x.ig.Photo,
+        IngredientGUID = Convert.ToString(x.ig.IngredientId),
+        CookTime = x.ig.CookTime,
+        Serves = x.ig.Serves,
+        Quantity = x.ig.Quantity,			
+		}).ToListAsync(); 
+	}
+
         public async Task<List<PantryDto>> GetPantryItems(string username)
         {
             // STEP 1: Load pantries (filter in SQL only)
@@ -649,9 +683,10 @@ namespace KitchenCompanionWebApi.Services
             recipe.CategoryId = Convert.ToInt32(dto.Category);
             //recipe.Stars = dto.Stars;
 
-            /*recipe.CookTime = dto.CookTime;
+            recipe.CookTime = dto.CookTime;
             recipe.Prep = dto.Prep;
-            recipe.Serves = dto.Serves; **/
+            recipe.Serves = dto.Serves;
+	    
             
 
             _recipeEntitiesContext.RecipeIngredients.RemoveRange(
@@ -851,6 +886,39 @@ namespace KitchenCompanionWebApi.Services
             };
         }
 
+	public async Task<List<IngredientDto>> GetAllIngredientsPagination(int pageNumber, int pageSize)
+	{
+    var query = (
+        from ig in _recipeEntitiesContext.Ingredients
+        join u in _recipeEntitiesContext.Units on ig.UnitId equals u.UnitId
+        join so in _recipeEntitiesContext.Stores on ig.StoreId equals so.StoreId
+        select new IngredientDto
+        {
+            IngredientId = ig.IngredientId,
+            IngredientName = ig.IngredientName,
+            UnitName = u.Unit1,
+            StoreName = so.StoreName,
+            StoreUrl = so.StoreUrl,
+            CreatedBy = ig.CreatedBy,
+            Stars = ig.Stars,
+            PrepTime = ig.Preptime,
+            Photo = ig.Photo,
+            IngredientGUID = Convert.ToString(ig.IngredientId),
+            CookTime = ig.CookTime,
+            Serves = ig.Serves,
+            Quantity = ig.Quantity,
+        }
+    );
+
+    var results = await query
+        .OrderBy(x => x.IngredientId) // REQUIRED for stable pagination
+        .Skip((pageNumber - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+
+    return results; 
+	}
+
         public async Task<List<IngredientDto>> GetAllIngredients()
         {
             var results = await (
@@ -901,6 +969,9 @@ namespace KitchenCompanionWebApi.Services
                     Category = r.Category.Category1,
                     IsDeleted = r.IsDeleted, 
                     Favorite = r.Favorite.Favorite1,
+		    Prep = r.Prep, 
+		    CookTime = r.CookTime, 
+		    Serves = r.Serves, 
                     Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
                     {
                         RecipeId = ri.RecipeId,
@@ -935,6 +1006,7 @@ namespace KitchenCompanionWebApi.Services
                                         .ThenInclude(i => i.Store)
                                 .Include(r => r.RecipeIngredients)
                                     .ThenInclude(ri => ri.Unit)
+				.Where(r => !r.IsDeleted)
                                 .Where(r => r.Favorite.Favorite1 == "Yes")
                                 .Where(r => r.Chef.UserName == chefId)
                                 .Select(r => new RecipeDto
